@@ -1,18 +1,18 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
-import ReactFlow, { 
+import { 
+  ReactFlow, 
   Controls, 
   Background, 
   Node, 
   Edge,
   useNodesState,
   useEdgesState 
-} from "reactflow";
-import "reactflow/dist/style.css";
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 import { ProvenanceInspector, SelectedNodeData } from "./ProvenanceInspector";
 
-// Initial sample nodes
 const initialNodes: Node[] = [
   {
     id: "1",
@@ -32,7 +32,7 @@ const initialNodes: Node[] = [
     type: "default",
     data: { 
       label: "Synthetic Codex #819", 
-      pillar: "Digital Replicas", 
+      pillar: "Digital Synthesis", 
       agency: "Synthetic AI", 
       epoch: "2026 (Present)", 
       humanRatio: 12 
@@ -51,15 +51,14 @@ export function GraphExplorer() {
   const [edges, , onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<SelectedNodeData | null>(null);
 
-  // Click handler for graph nodes
   const handleNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     setSelectedNode({
       id: node.id,
-      label: node.data.label,
-      pillar: node.data.pillar || "Visual Arts",
-      agency: node.data.agency || "Pure Human",
-      epoch: node.data.epoch || "2026",
-      humanRatio: node.data.humanRatio ?? 100,
+      label: (node.data.label as string) || "Untitled Node",
+      pillar: (node.data.pillar as string) || "Visual Arts",
+      agency: (node.data.agency as any) || "Pure Human",
+      epoch: (node.data.epoch as string) || "2026",
+      humanRatio: (node.data.humanRatio as number) ?? 100,
     });
   }, []);
 
@@ -77,7 +76,6 @@ export function GraphExplorer() {
         <Controls />
       </ReactFlow>
 
-      {/* Slide-over Inspector */}
       <ProvenanceInspector 
         node={selectedNode} 
         onClose={() => setSelectedNode(null)} 
