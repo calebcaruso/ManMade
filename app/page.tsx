@@ -14,7 +14,7 @@ import {
   Edge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { ShieldCheck, Cpu, Activity, Flame, LayoutDashboard, GitGraph } from 'lucide-react';
+import { ShieldCheck, Cpu, Activity, Flame, LayoutDashboard, GitGraph, Plus, X } from 'lucide-react';
 
 const HISTORICAL_TIMELINE_DATA = [
   { epoch: 'Stone Age', humanRatio: 100, syntheticInfiltration: 0 },
@@ -46,50 +46,108 @@ const INITIAL_EDGES: Edge[] = [
   { id: 'e3-4', source: '3', target: '4', animated: true, style: { stroke: '#06b6d4' } },
 ];
 
+const PILLARS = [
+  'Architectural',
+  'Textiles',
+  'Ceramics',
+  'Metalwork',
+  'Literary',
+  'Visual Arts',
+  'Digital Synthesis'
+];
+
+const AGENCIES = [
+  'Pure Human',
+  'Human-Assisted Tool',
+  'Machine Automated',
+  'Synthetic AI'
+];
+
 export default function AncestralLedgerApp() {
   const [activeTab, setActiveTab] = useState<'analytics' | 'graph'>('analytics');
   const [totalArtifacts, setTotalArtifacts] = useState<number>(0);
   const [pillarData, setPillarData] = useState<any[]>([]);
+  
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    pillar: PILLARS[0],
+    agency: AGENCIES[0],
+    epoch: '2026 (Present)',
+    human_ratio: 100,
+  });
 
-  useEffect(() => {
-    async function loadSupabaseData() {
-      const { data, count, error } = await supabase
-        .from('artifacts')
-        .select('*', { count: 'exact' });
+  const loadSupabaseData = async () => {
+    const { data, count, error } = await supabase
+      .from('artifacts')
+      .select('*', { count: 'exact' });
 
-      if (!error && data) {
-        setTotalArtifacts(count || data.length);
-        
-        const countsByPillar: Record<string, { human: number; synthetic: number }> = {};
-        data.forEach((item) => {
-          if (!countsByPillar[item.pillar]) {
-            countsByPillar[item.pillar] = { human: 0, synthetic: 0 };
-          }
-          if (item.agency === 'Synthetic AI') {
-            countsByPillar[item.pillar].synthetic += 1;
-          } else {
-            countsByPillar[item.pillar].human += 1;
-          }
-        });
-
-        const formattedChartData = Object.keys(countsByPillar).map((pillar) => ({
-          pillar,
-          human: countsByPillar[pillar].human,
-          synthetic: countsByPillar[pillar].synthetic,
-        }));
-
-        if (formattedChartData.length > 0) {
-          setPillarData(formattedChartData);
+    if (!error && data) {
+      setTotalArtifacts(count || data.length);
+      
+      const countsByPillar: Record<string, { human: number; synthetic: number }> = {};
+      data.forEach((item) => {
+        if (!countsByPillar[item.pillar]) {
+          countsByPillar[item.pillar] = { human: 0, synthetic: 0 };
         }
+        if (item.agency === 'Synthetic AI') {
+          countsByPillar[item.pillar].synthetic += 1;
+        } else {
+          countsByPillar[item.pillar].human += 1;
+        }
+      });
+
+      const formattedChartData = Object.keys(countsByPillar).map((pillar) => ({
+        pillar,
+        human: countsByPillar[pillar].human,
+        synthetic: countsByPillar[pillar].synthetic,
+      }));
+
+      if (formattedChartData.length > 0) {
+        setPillarData(formattedChartData);
       }
     }
+  };
 
+  useEffect(() => {
     loadSupabaseData();
   }, []);
 
+  const handleCreateArtifact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    const { error } = await supabase.from('artifacts').insert([
+      {
+        title: formData.title,
+        pillar: formData.pillar,
+        agency: formData.agency,
+        epoch: formData.epoch,
+        human_ratio: Number(formData.human_ratio),
+      },
+    ]);
+
+    if (!error) {
+      setFormData({
+        title: '',
+        pillar: PILLARS[0],
+        agency: AGENCIES[0],
+        epoch: '2026 (Present)',
+        human_ratio: 100,
+      });
+      setIsModalOpen(false);
+      await loadSupabaseData();
+    } else {
+      alert('Failed to register artifact: ' + error.message);
+    }
+    setIsSubmitting(false);
+  };
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-8 space-y-8 font-sans">
-      <div className="flex justify-between items-center border-b border-zinc-800 pb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-zinc-800 pb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-100 flex items-center gap-2">
             <Flame className="w-6 h-6 text-amber-500" />
@@ -100,23 +158,32 @@ export default function AncestralLedgerApp() {
           </p>
         </div>
 
-        <div className="flex bg-zinc-900 p-1 rounded-xl border border-zinc-800 font-medium text-xs">
+        <div className="flex items-center gap-3">
           <button
-            onClick={() => setActiveTab('analytics')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-              activeTab === 'analytics' ? 'bg-amber-500 text-zinc-950 font-semibold' : 'text-zinc-400 hover:text-white'
-            }`}
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold rounded-xl text-xs transition-all shadow-lg shadow-amber-500/10"
           >
-            <LayoutDashboard className="w-4 h-4" /> Analytics View
+            <Plus className="w-4 h-4" /> Register Artifact
           </button>
-          <button
-            onClick={() => setActiveTab('graph')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-              activeTab === 'graph' ? 'bg-amber-500 text-zinc-950 font-semibold' : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <GitGraph className="w-4 h-4" /> Graph Explorer
-          </button>
+
+          <div className="flex bg-zinc-900 p-1 rounded-xl border border-zinc-800 font-medium text-xs">
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                activeTab === 'analytics' ? 'bg-zinc-800 text-amber-500 font-semibold' : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <LayoutDashboard className="w-4 h-4" /> Analytics View
+            </button>
+            <button
+              onClick={() => setActiveTab('graph')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                activeTab === 'graph' ? 'bg-zinc-800 text-amber-500 font-semibold' : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <GitGraph className="w-4 h-4" /> Graph Explorer
+            </button>
+          </div>
         </div>
       </div>
 
@@ -150,9 +217,9 @@ export default function AncestralLedgerApp() {
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={pillarData.length > 0 ? pillarData : [
-                    { pillar: 'Architectural', human: 1420, synthetic: 310 },
-                    { pillar: 'Textiles', human: 3890, synthetic: 1820 },
-                    { pillar: 'Ceramics', human: 980, synthetic: 240 },
+                    { pillar: 'Architectural', human: 1, synthetic: 0 },
+                    { pillar: 'Textiles', human: 1, synthetic: 0 },
+                    { pillar: 'Ceramics', human: 1, synthetic: 0 },
                   ]}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
                     <XAxis dataKey="pillar" stroke="#71717a" fontSize={10} />
@@ -213,6 +280,112 @@ export default function AncestralLedgerApp() {
               <Background color="#27272a" gap={16} />
               <Controls />
             </ReactFlow>
+          </div>
+        </div>
+      )}
+
+      {/* Artifact Ingestion Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-6">
+            <div className="flex justify-between items-center border-b border-zinc-800 pb-4">
+              <h2 className="text-lg font-bold text-zinc-100 flex items-center gap-2">
+                <Flame className="w-5 h-5 text-amber-500" />
+                Ingest New Artifact
+              </h2>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-zinc-400 hover:text-zinc-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateArtifact} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1">Artifact Title</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Hand-carved Wooden Stool"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-zinc-400 mb-1">Pillar</label>
+                  <select
+                    value={formData.pillar}
+                    onChange={(e) => setFormData({ ...formData, pillar: e.target.value })}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
+                  >
+                    {PILLARS.map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-zinc-400 mb-1">Agency</label>
+                  <select
+                    value={formData.agency}
+                    onChange={(e) => setFormData({ ...formData, agency: e.target.value })}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
+                  >
+                    {AGENCIES.map((a) => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1">Epoch / Date</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 2026 (Present) or Bronze Age"
+                  value={formData.epoch}
+                  onChange={(e) => setFormData({ ...formData, epoch: e.target.value })}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-xs font-medium text-zinc-400 mb-1">
+                  <span>Human Ratio</span>
+                  <span className="text-amber-500 font-mono">{formData.human_ratio}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={formData.human_ratio}
+                  onChange={(e) => setFormData({ ...formData, human_ratio: Number(e.target.value) })}
+                  className="w-full accent-amber-500 bg-zinc-950 rounded-lg cursor-pointer"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-zinc-950 text-xs font-bold rounded-xl transition-all"
+                >
+                  {isSubmitting ? 'Saving...' : 'Submit Entry'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
