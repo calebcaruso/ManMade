@@ -6,7 +6,10 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
-import { ShieldCheck, Cpu, Activity, Flame, LayoutDashboard, GitGraph, Plus, X } from 'lucide-react';
+import { 
+  ShieldCheck, Cpu, Activity, Flame, LayoutDashboard, GitGraph, 
+  Plus, X, Search, Filter, CheckCircle2, AlertCircle, Loader2 
+} from 'lucide-react';
 import { GraphExplorer } from '../components/GraphExplorer';
 
 interface Artifact {
@@ -57,6 +60,11 @@ export default function AncestralLedgerApp() {
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   
+  // Filter & Search State
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedPillarFilter, setSelectedPillarFilter] = useState<string>('ALL');
+  const [selectedAgencyFilter, setSelectedAgencyFilter] = useState<string>('ALL');
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -68,6 +76,14 @@ export default function AncestralLedgerApp() {
     human_ratio: 100,
   });
 
+  // Toast Notification State
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
   // Fetch full dataset from Supabase
   const loadSupabaseData = async () => {
     const { data, error } = await supabase
@@ -77,6 +93,8 @@ export default function AncestralLedgerApp() {
 
     if (!error && data) {
       setArtifacts(data as Artifact[]);
+    } else if (error) {
+      showToast('Failed to connect to ledger database', 'error');
     }
     setIsLoading(false);
   };
@@ -91,7 +109,6 @@ export default function AncestralLedgerApp() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'artifacts' },
         () => {
-          // Instantly re-fetch data on any INSERT, UPDATE, or DELETE
           loadSupabaseData();
         }
       )
@@ -105,14 +122,19 @@ export default function AncestralLedgerApp() {
   // Submit Handler
   const handleCreateArtifact = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.title.trim()) {
+      showToast('Please enter an artifact title', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
 
     const { error } = await supabase.from('artifacts').insert([
       {
-        title: formData.title,
+        title: formData.title.trim(),
         pillar: formData.pillar,
         agency: formData.agency,
-        epoch: formData.epoch,
+        epoch: formData.epoch.trim(),
         human_ratio: Number(formData.human_ratio),
       },
     ]);
@@ -126,26 +148,38 @@ export default function AncestralLedgerApp() {
         human_ratio: 100,
       });
       setIsModalOpen(false);
+      showToast('Artifact successfully registered to ledger!');
     } else {
-      alert('Failed to register artifact: ' + error.message);
+      showToast(`Registration failed: ${error.message}`, 'error');
     }
     setIsSubmitting(false);
   };
 
-  // Dynamic KPI Calculations
-  const totalArtifacts = artifacts.length;
-  const syntheticCount = artifacts.filter(a => a.agency === 'Synthetic AI').length;
+  // Filter Logic
+  const filteredArtifacts = artifacts.filter((a) => {
+    const matchesSearch = 
+      a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      a.epoch.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesPillar = selectedPillarFilter === 'ALL' || a.pillar === selectedPillarFilter;
+    const matchesAgency = selectedAgencyFilter === 'ALL' || a.agency === selectedAgencyFilter;
+    
+    return matchesSearch && matchesPillar && matchesAgency;
+  });
+
+  // Dynamic KPI Calculations (Based on Filtered Records)
+  const totalArtifacts = filteredArtifacts.length;
+  const syntheticCount = filteredArtifacts.filter(a => a.agency === 'Synthetic AI').length;
   const syntheticPercentage = totalArtifacts > 0 ? ((syntheticCount / totalArtifacts) * 100).toFixed(1) : '0';
   
   const avgHumanRatio = totalArtifacts > 0
-    ? (artifacts.reduce((acc, curr) => acc + Number(curr.human_ratio || 0), 0) / totalArtifacts).toFixed(1)
+    ? (filteredArtifacts.reduce((acc, curr) => acc + Number(curr.human_ratio || 0), 0) / totalArtifacts).toFixed(1)
     : '0';
 
-  const coveredPillarsCount = new Set(artifacts.map(a => a.pillar)).size;
+  const coveredPillarsCount = new Set(filteredArtifacts.map(a => a.pillar)).size;
 
   // Dynamic 7-Pillar Bar Chart Data
   const pillarChartData = ALL_PILLARS.map(pillarName => {
-    const matching = artifacts.filter(a => a.pillar === pillarName);
+    const matching = filteredArtifacts.filter(a => a.pillar === pillarName);
     const human = matching.filter(a => a.agency !== 'Synthetic AI').length;
     const synthetic = matching.filter(a => a.agency === 'Synthetic AI').length;
     return {
@@ -157,7 +191,7 @@ export default function AncestralLedgerApp() {
 
   // Dynamic Agency Pie Chart Data
   const agencyPieData = AGENCIES.map(agencyName => {
-    const count = artifacts.filter(a => a.agency === agencyName).length;
+    const count = filteredArtifacts.filter(a => a.agency === agencyName).length;
     return {
       name: agencyName,
       value: count,
@@ -166,7 +200,19 @@ export default function AncestralLedgerApp() {
   });
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-8 space-y-8 font-sans">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-8 space-y-6 font-sans relative">
+      {/* Toast Notification Banner */}
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl transition-all duration-300 ${
+          toast.type === 'error' 
+            ? 'bg-rose-950/90 border-rose-800 text-rose-200' 
+            : 'bg-emerald-950/90 border-emerald-800 text-emerald-200'
+        }`}>
+          {toast.type === 'error' ? <AlertCircle className="w-5 h-5 text-rose-400" /> : <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
+          <span className="text-xs font-medium">{toast.message}</span>
+        </div>
+      )}
+
       {/* Header Bar */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-zinc-800 pb-6 gap-4">
         <div>
@@ -208,6 +254,59 @@ export default function AncestralLedgerApp() {
         </div>
       </div>
 
+      {/* Search & Filter Toolbar */}
+      {activeTab === 'analytics' && (
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-zinc-900/40 p-4 rounded-2xl border border-zinc-800/80">
+          <div className="relative w-full md:w-80">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <input
+              type="text"
+              placeholder="Search ledger by title or epoch..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-9 pr-3 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-amber-500 transition-colors"
+            />
+          </div>
+
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="flex items-center gap-2 text-xs text-zinc-400">
+              <Filter className="w-3.5 h-3.5" /> Filters:
+            </div>
+            
+            <select
+              value={selectedPillarFilter}
+              onChange={(e) => setSelectedPillarFilter(e.target.value)}
+              className="bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500"
+            >
+              <option value="ALL">All Pillars</option>
+              {ALL_PILLARS.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+
+            <select
+              value={selectedAgencyFilter}
+              onChange={(e) => setSelectedAgencyFilter(e.target.value)}
+              className="bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500"
+            >
+              <option value="ALL">All Agencies</option>
+              {AGENCIES.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+
+            {(searchQuery || selectedPillarFilter !== 'ALL' || selectedAgencyFilter !== 'ALL') && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedPillarFilter('ALL');
+                  setSelectedAgencyFilter('ALL');
+                }}
+                className="text-xs text-amber-500 hover:underline px-2"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {activeTab === 'analytics' ? (
         <div className="space-y-8">
           {/* Live KPI Cards */}
@@ -216,14 +315,14 @@ export default function AncestralLedgerApp() {
               { 
                 label: 'Verified Database Records', 
                 value: isLoading ? '...' : totalArtifacts.toLocaleString(), 
-                sub: 'Live Supabase Query', 
+                sub: searchQuery || selectedPillarFilter !== 'ALL' ? 'Filtered Query' : 'Live Supabase Query', 
                 icon: ShieldCheck, 
                 color: 'text-amber-500' 
               },
               { 
                 label: 'Synthetic Models Registered', 
                 value: isLoading ? '...' : syntheticCount.toLocaleString(), 
-                sub: `${syntheticPercentage}% Total Ledger`, 
+                sub: `${syntheticPercentage}% Filtered Total`, 
                 icon: Cpu, 
                 color: 'text-cyan-500' 
               },
@@ -423,8 +522,9 @@ export default function AncestralLedgerApp() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-zinc-950 text-xs font-bold rounded-xl transition-all"
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-zinc-950 text-xs font-bold rounded-xl transition-all flex items-center gap-2"
                 >
+                  {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   {isSubmitting ? 'Saving...' : 'Submit Entry'}
                 </button>
               </div>
