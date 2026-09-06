@@ -29,11 +29,12 @@ const PILLAR_DISTRIBUTION_DATA = [
 ];
 
 const HISTORICAL_TIMELINE_DATA = [
-  { epoch: '2022', humanRatio: 98, syntheticInfiltration: 2 },
-  { epoch: '2023', humanRatio: 91, syntheticInfiltration: 9 },
-  { epoch: '2024', humanRatio: 78, syntheticInfiltration: 22 },
-  { epoch: '2025', humanRatio: 64, syntheticInfiltration: 36 },
-  { epoch: '2026', humanRatio: 52, syntheticInfiltration: 48 },
+  { epoch: 'Stone Age', humanRatio: 100, syntheticInfiltration: 0 },
+  { epoch: 'Bronze Age', humanRatio: 100, syntheticInfiltration: 0 },
+  { epoch: 'Industrial Era', humanRatio: 85, syntheticInfiltration: 15 },
+  { epoch: 'Information Age', humanRatio: 70, syntheticInfiltration: 30 },
+  { epoch: '2022 (GenAI)', humanRatio: 60, syntheticInfiltration: 40 },
+  { epoch: '2026 (Present)', humanRatio: 52, syntheticInfiltration: 48 },
 ];
 
 const PROVENANCE_PIE_DATA = [
@@ -140,7 +141,7 @@ export default function AnalyticsDashboard() {
         {/* Timeline Area Chart */}
         <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl lg:col-span-2">
           <h3 className="text-sm font-semibold text-zinc-200 mb-4 flex items-center justify-between">
-            <span>Temporal Infiltration Trajectory (2022 - 2026)</span>
+            <span>Temporal Infiltration Trajectory (Stone Age - 2026)</span>
             <span className="text-xs font-mono text-zinc-500">% Share in Database Registrations</span>
           </h3>
           <div className="h-64">
