@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import {
@@ -38,10 +38,9 @@ const PROVENANCE_PIE_DATA = [
   { name: 'Pure Human', value: 9020, color: '#f59e0b' },
   { name: 'Human-Assisted Tool', value: 2400, color: '#d97706' },
   { name: 'Machine Automated', value: 1100, color: '#64748b' },
-  { name: 'Synthetic AI', value: 06b6d4' },
+  { name: 'Synthetic AI', value: 8190, color: '#06b6d4' },
 ];
 
-// Graph Nodes & Edges for Provenance Explorer
 const INITIAL_NODES: Node[] = [
   { id: '1', position: { x: 50, y: 150 }, data: { label: '🗿 Stone Age Lithic Core (Pure Human)' }, style: { background: '#18181b', color: '#f59e0b', border: '1px solid #f59e0b', padding: '12px', borderRadius: '12px' } },
   { id: '2', position: { x: 300, y: 80 }, data: { label: '🏺 Bronze Age Ceramic Craft (Pure Human)' }, style: { background: '#18181b', color: '#d97706', border: '1px solid #d97706', padding: '12px', borderRadius: '12px' } },
@@ -61,7 +60,6 @@ export default function AncestralLedgerApp() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-8 space-y-8 font-sans">
-      {/* Navigation Header */}
       <div className="flex justify-between items-center border-b border-zinc-800 pb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-100 flex items-center gap-2">
@@ -73,7 +71,6 @@ export default function AncestralLedgerApp() {
           </p>
         </div>
 
-        {/* View Selector Tabs */}
         <div className="flex bg-zinc-900 p-1 rounded-xl border border-zinc-800 font-medium text-xs">
           <button
             onClick={() => setActiveTab('analytics')}
@@ -96,7 +93,6 @@ export default function AncestralLedgerApp() {
 
       {activeTab === 'analytics' ? (
         <div className="space-y-8">
-          {/* KPI Summary Row */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {[
               { label: 'Verified Human Crafts', value: '11,420', sub: '55.1% Total Ledger', icon: ShieldCheck, color: 'text-amber-500' },
@@ -117,7 +113,6 @@ export default function AncestralLedgerApp() {
             ))}
           </div>
 
-          {/* Charts Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl">
               <h3 className="text-sm font-semibold text-zinc-200 mb-4 flex items-center justify-between">
@@ -175,7 +170,6 @@ export default function AncestralLedgerApp() {
           </div>
         </div>
       ) : (
-        /* Interactive React Flow Graph Explorer */
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-4 h-[600px] flex flex-col">
           <div className="mb-4">
             <h2 className="text-sm font-bold text-zinc-200">Interactive Lineage Explorer</h2>
