@@ -9,6 +9,16 @@ import {
 import { ShieldCheck, Cpu, Activity, Flame, LayoutDashboard, GitGraph, Plus, X } from 'lucide-react';
 import { GraphExplorer } from '../components/GraphExplorer';
 
+interface Artifact {
+  id: string;
+  title: string;
+  pillar: string;
+  agency: string;
+  epoch: string;
+  human_ratio: number;
+  created_at?: string;
+}
+
 const HISTORICAL_TIMELINE_DATA = [
   { epoch: 'Stone Age', humanRatio: 100, syntheticInfiltration: 0 },
   { epoch: 'Bronze Age', humanRatio: 100, syntheticInfiltration: 0 },
@@ -18,14 +28,7 @@ const HISTORICAL_TIMELINE_DATA = [
   { epoch: '2026 (Present)', humanRatio: 52, syntheticInfiltration: 48 },
 ];
 
-const PROVENANCE_PIE_DATA = [
-  { name: 'Pure Human', value: 9020, color: '#f59e0b' },
-  { name: 'Human-Assisted Tool', value: 2400, color: '#d97706' },
-  { name: 'Machine Automated', value: 1100, color: '#64748b' },
-  { name: 'Synthetic AI', value: 8190, color: '#06b6d4' },
-];
-
-const PILLARS = [
+const ALL_PILLARS = [
   'Architectural',
   'Textiles',
   'Ceramics',
@@ -42,58 +45,64 @@ const AGENCIES = [
   'Synthetic AI'
 ];
 
+const AGENCY_COLORS: Record<string, string> = {
+  'Pure Human': '#f59e0b',
+  'Human-Assisted Tool': '#d97706',
+  'Machine Automated': '#64748b',
+  'Synthetic AI': '#06b6d4',
+};
+
 export default function AncestralLedgerApp() {
   const [activeTab, setActiveTab] = useState<'analytics' | 'graph'>('analytics');
-  const [totalArtifacts, setTotalArtifacts] = useState<number>(0);
-  const [pillarData, setPillarData] = useState<any[]>([]);
+  const [artifacts, setArtifacts] = useState<Artifact[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [formData, setFormData] = useState({
     title: '',
-    pillar: PILLARS[0],
+    pillar: ALL_PILLARS[0],
     agency: AGENCIES[0],
     epoch: '2026 (Present)',
     human_ratio: 100,
   });
 
+  // Fetch full dataset from Supabase
   const loadSupabaseData = async () => {
-    const { data, count, error } = await supabase
+    const { data, error } = await supabase
       .from('artifacts')
-      .select('*', { count: 'exact' });
+      .select('*')
+      .order('created_at', { ascending: false });
 
     if (!error && data) {
-      setTotalArtifacts(count || data.length);
-      
-      const countsByPillar: Record<string, { human: number; synthetic: number }> = {};
-      data.forEach((item) => {
-        if (!countsByPillar[item.pillar]) {
-          countsByPillar[item.pillar] = { human: 0, synthetic: 0 };
-        }
-        if (item.agency === 'Synthetic AI') {
-          countsByPillar[item.pillar].synthetic += 1;
-        } else {
-          countsByPillar[item.pillar].human += 1;
-        }
-      });
-
-      const formattedChartData = Object.keys(countsByPillar).map((pillar) => ({
-        pillar,
-        human: countsByPillar[pillar].human,
-        synthetic: countsByPillar[pillar].synthetic,
-      }));
-
-      if (formattedChartData.length > 0) {
-        setPillarData(formattedChartData);
-      }
+      setArtifacts(data as Artifact[]);
     }
+    setIsLoading(false);
   };
 
   useEffect(() => {
     loadSupabaseData();
+
+    // Setup Supabase Realtime Subscription
+    const channel = supabase
+      .channel('realtime-artifacts')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'artifacts' },
+        () => {
+          // Instantly re-fetch data on any INSERT, UPDATE, or DELETE
+          loadSupabaseData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
+  // Submit Handler
   const handleCreateArtifact = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -111,21 +120,54 @@ export default function AncestralLedgerApp() {
     if (!error) {
       setFormData({
         title: '',
-        pillar: PILLARS[0],
+        pillar: ALL_PILLARS[0],
         agency: AGENCIES[0],
         epoch: '2026 (Present)',
         human_ratio: 100,
       });
       setIsModalOpen(false);
-      await loadSupabaseData();
     } else {
       alert('Failed to register artifact: ' + error.message);
     }
     setIsSubmitting(false);
   };
 
+  // Dynamic KPI Calculations
+  const totalArtifacts = artifacts.length;
+  const syntheticCount = artifacts.filter(a => a.agency === 'Synthetic AI').length;
+  const syntheticPercentage = totalArtifacts > 0 ? ((syntheticCount / totalArtifacts) * 100).toFixed(1) : '0';
+  
+  const avgHumanRatio = totalArtifacts > 0
+    ? (artifacts.reduce((acc, curr) => acc + Number(curr.human_ratio || 0), 0) / totalArtifacts).toFixed(1)
+    : '0';
+
+  const coveredPillarsCount = new Set(artifacts.map(a => a.pillar)).size;
+
+  // Dynamic 7-Pillar Bar Chart Data
+  const pillarChartData = ALL_PILLARS.map(pillarName => {
+    const matching = artifacts.filter(a => a.pillar === pillarName);
+    const human = matching.filter(a => a.agency !== 'Synthetic AI').length;
+    const synthetic = matching.filter(a => a.agency === 'Synthetic AI').length;
+    return {
+      pillar: pillarName,
+      human,
+      synthetic,
+    };
+  });
+
+  // Dynamic Agency Pie Chart Data
+  const agencyPieData = AGENCIES.map(agencyName => {
+    const count = artifacts.filter(a => a.agency === agencyName).length;
+    return {
+      name: agencyName,
+      value: count,
+      color: AGENCY_COLORS[agencyName],
+    };
+  });
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-8 space-y-8 font-sans">
+      {/* Header Bar */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-zinc-800 pb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-100 flex items-center gap-2">
@@ -168,12 +210,37 @@ export default function AncestralLedgerApp() {
 
       {activeTab === 'analytics' ? (
         <div className="space-y-8">
+          {/* Live KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {[
-              { label: 'Verified Database Records', value: totalArtifacts ? totalArtifacts.toString() : 'Loading...', sub: 'Live Supabase Query', icon: ShieldCheck, color: 'text-amber-500' },
-              { label: 'Synthetic Models Registered', value: '8,190', sub: '39.5% Total Ledger', icon: Cpu, color: 'text-cyan-500' },
-              { label: 'Avg Human Touch Ratio', value: '84.2%', sub: 'Pure Human Filter active', icon: Activity, color: 'text-emerald-500' },
-              { label: 'Pillar Coverage', value: '7 / 7', sub: '100% Material Culture Schema', icon: Flame, color: 'text-purple-500' },
+              { 
+                label: 'Verified Database Records', 
+                value: isLoading ? '...' : totalArtifacts.toLocaleString(), 
+                sub: 'Live Supabase Query', 
+                icon: ShieldCheck, 
+                color: 'text-amber-500' 
+              },
+              { 
+                label: 'Synthetic Models Registered', 
+                value: isLoading ? '...' : syntheticCount.toLocaleString(), 
+                sub: `${syntheticPercentage}% Total Ledger`, 
+                icon: Cpu, 
+                color: 'text-cyan-500' 
+              },
+              { 
+                label: 'Avg Human Touch Ratio', 
+                value: isLoading ? '...' : `${avgHumanRatio}%`, 
+                sub: 'Live calculation across records', 
+                icon: Activity, 
+                color: 'text-emerald-500' 
+              },
+              { 
+                label: 'Pillar Coverage', 
+                value: isLoading ? '...' : `${coveredPillarsCount} / 7`, 
+                sub: 'Active Material Culture Pillars', 
+                icon: Flame, 
+                color: 'text-purple-500' 
+              },
             ].map((kpi, idx) => (
               <div key={idx} className="bg-zinc-900/60 border border-zinc-800 p-5 rounded-2xl flex flex-col justify-between">
                 <div className="flex justify-between items-start">
@@ -188,21 +255,19 @@ export default function AncestralLedgerApp() {
             ))}
           </div>
 
+          {/* Live Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Pillar Bar Chart */}
             <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl">
               <h3 className="text-sm font-semibold text-zinc-200 mb-4 flex items-center justify-between">
                 <span>7-Pillar Distribution: Dynamic Database Query</span>
               </h3>
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={pillarData.length > 0 ? pillarData : [
-                    { pillar: 'Architectural', human: 1, synthetic: 0 },
-                    { pillar: 'Textiles', human: 1, synthetic: 0 },
-                    { pillar: 'Ceramics', human: 1, synthetic: 0 },
-                  ]}>
+                  <BarChart data={pillarChartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
                     <XAxis dataKey="pillar" stroke="#71717a" fontSize={10} />
-                    <YAxis stroke="#71717a" fontSize={10} />
+                    <YAxis stroke="#71717a" fontSize={10} allowDecimals={false} />
                     <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }} />
                     <Bar dataKey="human" name="Human Craft" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="synthetic" name="Synthetic AI" fill="#06b6d4" radius={[4, 4, 0, 0]} />
@@ -211,6 +276,7 @@ export default function AncestralLedgerApp() {
               </div>
             </div>
 
+            {/* Creation Agency Pie Chart */}
             <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl">
               <h3 className="text-sm font-semibold text-zinc-200 mb-4 flex items-center justify-between">
                 <span>Creation Agency Composition</span>
@@ -218,8 +284,16 @@ export default function AncestralLedgerApp() {
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={PROVENANCE_PIE_DATA} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={4} dataKey="value">
-                      {PROVENANCE_PIE_DATA.map((entry, index) => (
+                    <Pie 
+                      data={agencyPieData} 
+                      cx="50%" 
+                      cy="50%" 
+                      innerRadius={60} 
+                      outerRadius={90} 
+                      paddingAngle={4} 
+                      dataKey="value"
+                    >
+                      {agencyPieData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
@@ -229,6 +303,7 @@ export default function AncestralLedgerApp() {
               </div>
             </div>
 
+            {/* Temporal Timeline Chart */}
             <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl lg:col-span-2">
               <h3 className="text-sm font-semibold text-zinc-200 mb-4 flex items-center justify-between">
                 <span>Temporal Infiltration Trajectory (Stone Age - 2026)</span>
@@ -290,7 +365,7 @@ export default function AncestralLedgerApp() {
                     onChange={(e) => setFormData({ ...formData, pillar: e.target.value })}
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
                   >
-                    {PILLARS.map((p) => (
+                    {ALL_PILLARS.map((p) => (
                       <option key={p} value={p}>{p}</option>
                     ))}
                   </select>
