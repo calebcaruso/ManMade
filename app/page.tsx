@@ -6,15 +6,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
-import {
-  ReactFlow,
-  Background,
-  Controls,
-  Node,
-  Edge,
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
 import { ShieldCheck, Cpu, Activity, Flame, LayoutDashboard, GitGraph, Plus, X } from 'lucide-react';
+import { GraphExplorer } from '../components/GraphExplorer';
 
 const HISTORICAL_TIMELINE_DATA = [
   { epoch: 'Stone Age', humanRatio: 100, syntheticInfiltration: 0 },
@@ -30,20 +23,6 @@ const PROVENANCE_PIE_DATA = [
   { name: 'Human-Assisted Tool', value: 2400, color: '#d97706' },
   { name: 'Machine Automated', value: 1100, color: '#64748b' },
   { name: 'Synthetic AI', value: 8190, color: '#06b6d4' },
-];
-
-const INITIAL_NODES: Node[] = [
-  { id: '1', position: { x: 50, y: 150 }, data: { label: '🗿 Stone Age Lithic Core (Pure Human)' }, style: { background: '#18181b', color: '#f59e0b', border: '1px solid #f59e0b', padding: '12px', borderRadius: '12px' } },
-  { id: '2', position: { x: 300, y: 80 }, data: { label: '🏺 Bronze Age Ceramic Craft (Pure Human)' }, style: { background: '#18181b', color: '#d97706', border: '1px solid #d97706', padding: '12px', borderRadius: '12px' } },
-  { id: '3', position: { x: 300, y: 220 }, data: { label: '⚙️ Industrial Loom Pattern (Human-Assisted)' }, style: { background: '#18181b', color: '#64748b', border: '1px solid #64748b', padding: '12px', borderRadius: '12px' } },
-  { id: '4', position: { x: 600, y: 150 }, data: { label: '💻 3D NeRF Reconstruction (Synthetic AI)' }, style: { background: '#18181b', color: '#06b6d4', border: '1px solid #06b6d4', padding: '12px', borderRadius: '12px' } },
-];
-
-const INITIAL_EDGES: Edge[] = [
-  { id: 'e1-2', source: '1', target: '2', animated: true, style: { stroke: '#f59e0b' } },
-  { id: 'e1-3', source: '1', target: '3', animated: true, style: { stroke: '#d97706' } },
-  { id: 'e2-4', source: '2', target: '4', animated: true, style: { stroke: '#06b6d4' } },
-  { id: 'e3-4', source: '3', target: '4', animated: true, style: { stroke: '#06b6d4' } },
 ];
 
 const PILLARS = [
@@ -270,18 +249,7 @@ export default function AncestralLedgerApp() {
           </div>
         </div>
       ) : (
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-4 h-[600px] flex flex-col">
-          <div className="mb-4">
-            <h2 className="text-sm font-bold text-zinc-200">Interactive Lineage Explorer</h2>
-            <p className="text-xs text-zinc-400">Pan, zoom, and explore artifact relationships across epochs.</p>
-          </div>
-          <div className="flex-1 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950">
-            <ReactFlow defaultNodes={INITIAL_NODES} defaultEdges={INITIAL_EDGES} fitView>
-              <Background color="#27272a" gap={16} />
-              <Controls />
-            </ReactFlow>
-          </div>
-        </div>
+        <GraphExplorer />
       )}
 
       {/* Artifact Ingestion Modal */}
