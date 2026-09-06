@@ -1,22 +1,19 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  AreaChart,
-  Area,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
-import { ShieldCheck, Cpu, Database, Activity, Flame } from 'lucide-react';
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  Node,
+  Edge,
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import { ShieldCheck, Cpu, Database, Activity, Flame, LayoutDashboard, GitGraph } from 'lucide-react';
 
 const PILLAR_DISTRIBUTION_DATA = [
   { pillar: 'Architectural', human: 1420, synthetic: 310 },
@@ -41,13 +38,30 @@ const PROVENANCE_PIE_DATA = [
   { name: 'Pure Human', value: 9020, color: '#f59e0b' },
   { name: 'Human-Assisted Tool', value: 2400, color: '#d97706' },
   { name: 'Machine Automated', value: 1100, color: '#64748b' },
-  { name: 'Synthetic AI', value: 8190, color: '#06b6d4' },
+  { name: 'Synthetic AI', value: 06b6d4' },
 ];
 
-export default function AnalyticsDashboard() {
+// Graph Nodes & Edges for Provenance Explorer
+const INITIAL_NODES: Node[] = [
+  { id: '1', position: { x: 50, y: 150 }, data: { label: '🗿 Stone Age Lithic Core (Pure Human)' }, style: { background: '#18181b', color: '#f59e0b', border: '1px solid #f59e0b', padding: '12px', borderRadius: '12px' } },
+  { id: '2', position: { x: 300, y: 80 }, data: { label: '🏺 Bronze Age Ceramic Craft (Pure Human)' }, style: { background: '#18181b', color: '#d97706', border: '1px solid #d97706', padding: '12px', borderRadius: '12px' } },
+  { id: '3', position: { x: 300, y: 220 }, data: { label: '⚙️ Industrial Loom Pattern (Human-Assisted)' }, style: { background: '#18181b', color: '#64748b', border: '1px solid #64748b', padding: '12px', borderRadius: '12px' } },
+  { id: '4', position: { x: 600, y: 150 }, data: { label: '💻 3D NeRF Reconstruction (Synthetic AI)' }, style: { background: '#18181b', color: '#06b6d4', border: '1px solid #06b6d4', padding: '12px', borderRadius: '12px' } },
+];
+
+const INITIAL_EDGES: Edge[] = [
+  { id: 'e1-2', source: '1', target: '2', animated: true, style: { stroke: '#f59e0b' } },
+  { id: 'e1-3', source: '1', target: '3', animated: true, style: { stroke: '#d97706' } },
+  { id: 'e2-4', source: '2', target: '4', animated: true, style: { stroke: '#06b6d4' } },
+  { id: 'e3-4', source: '3', target: '4', animated: true, style: { stroke: '#06b6d4' } },
+];
+
+export default function AncestralLedgerApp() {
+  const [activeTab, setActiveTab] = useState<'analytics' | 'graph'>('analytics');
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-8 space-y-8 font-sans">
-      {/* Header */}
+      {/* Navigation Header */}
       <div className="flex justify-between items-center border-b border-zinc-800 pb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-100 flex items-center gap-2">
@@ -58,106 +72,123 @@ export default function AnalyticsDashboard() {
             Real-time audit distribution of authentic human endeavor vs. synthetic AI artifacts.
           </p>
         </div>
-        <div className="flex gap-3 font-mono text-xs">
-          <div className="bg-zinc-900 border border-zinc-800 px-3 py-2 rounded-xl text-zinc-300 flex items-center gap-2">
-            <Database className="w-4 h-4 text-amber-500" /> Total Nodes: <span className="font-bold text-white">20,710</span>
-          </div>
+
+        {/* View Selector Tabs */}
+        <div className="flex bg-zinc-900 p-1 rounded-xl border border-zinc-800 font-medium text-xs">
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+              activeTab === 'analytics' ? 'bg-amber-500 text-zinc-950 font-semibold' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <LayoutDashboard className="w-4 h-4" /> Analytics View
+          </button>
+          <button
+            onClick={() => setActiveTab('graph')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+              activeTab === 'graph' ? 'bg-amber-500 text-zinc-950 font-semibold' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <GitGraph className="w-4 h-4" /> Graph Explorer
+          </button>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Verified Human Crafts', value: '11,420', sub: '55.1% Total Ledger', icon: ShieldCheck, color: 'text-amber-500' },
-          { label: 'Synthetic Models Registered', value: '8,190', sub: '39.5% Total Ledger', icon: Cpu, color: 'text-cyan-500' },
-          { label: 'Avg Human Touch Ratio', value: '84.2%', sub: 'Pure Human Filter active', icon: Activity, color: 'text-emerald-500' },
-          { label: 'Pillar Coverage', value: '7 / 7', sub: '100% Material Culture Schema', icon: Flame, color: 'text-purple-500' },
-        ].map((kpi, idx) => (
-          <div key={idx} className="bg-zinc-900/60 border border-zinc-800 p-5 rounded-2xl flex flex-col justify-between">
-            <div className="flex justify-between items-start">
-              <span className="text-xs text-zinc-400 font-medium">{kpi.label}</span>
-              <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
+      {activeTab === 'analytics' ? (
+        <div className="space-y-8">
+          {/* KPI Summary Row */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Verified Human Crafts', value: '11,420', sub: '55.1% Total Ledger', icon: ShieldCheck, color: 'text-amber-500' },
+              { label: 'Synthetic Models Registered', value: '8,190', sub: '39.5% Total Ledger', icon: Cpu, color: 'text-cyan-500' },
+              { label: 'Avg Human Touch Ratio', value: '84.2%', sub: 'Pure Human Filter active', icon: Activity, color: 'text-emerald-500' },
+              { label: 'Pillar Coverage', value: '7 / 7', sub: '100% Material Culture Schema', icon: Flame, color: 'text-purple-500' },
+            ].map((kpi, idx) => (
+              <div key={idx} className="bg-zinc-900/60 border border-zinc-800 p-5 rounded-2xl flex flex-col justify-between">
+                <div className="flex justify-between items-start">
+                  <span className="text-xs text-zinc-400 font-medium">{kpi.label}</span>
+                  <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
+                </div>
+                <div className="mt-4">
+                  <div className="text-2xl font-bold font-mono text-zinc-100">{kpi.value}</div>
+                  <div className="text-[11px] text-zinc-500 mt-1 font-mono">{kpi.sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Charts Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl">
+              <h3 className="text-sm font-semibold text-zinc-200 mb-4 flex items-center justify-between">
+                <span>7-Pillar Distribution: Human vs Synthetic</span>
+              </h3>
+              <div className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={PILLAR_DISTRIBUTION_DATA}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                    <XAxis dataKey="pillar" stroke="#71717a" fontSize={10} />
+                    <YAxis stroke="#71717a" fontSize={10} />
+                    <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }} />
+                    <Bar dataKey="human" name="Human Craft" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="synthetic" name="Synthetic AI" fill="#06b6d4" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-            <div className="mt-4">
-              <div className="text-2xl font-bold font-mono text-zinc-100">{kpi.value}</div>
-              <div className="text-[11px] text-zinc-500 mt-1 font-mono">{kpi.sub}</div>
+
+            <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl">
+              <h3 className="text-sm font-semibold text-zinc-200 mb-4 flex items-center justify-between">
+                <span>Creation Agency Composition</span>
+              </h3>
+              <div className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={PROVENANCE_PIE_DATA} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={4} dataKey="value">
+                      {PROVENANCE_PIE_DATA.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl lg:col-span-2">
+              <h3 className="text-sm font-semibold text-zinc-200 mb-4 flex items-center justify-between">
+                <span>Temporal Infiltration Trajectory (Stone Age - 2026)</span>
+              </h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={HISTORICAL_TIMELINE_DATA}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                    <XAxis dataKey="epoch" stroke="#71717a" fontSize={11} />
+                    <YAxis stroke="#71717a" fontSize={11} />
+                    <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }} />
+                    <Area type="monotone" dataKey="humanRatio" name="Human Craft Ratio (%)" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.2} />
+                    <Area type="monotone" dataKey="syntheticInfiltration" name="Synthetic AI Infiltration (%)" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Chart Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* 7-Pillar Distribution */}
-        <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl">
-          <h3 className="text-sm font-semibold text-zinc-200 mb-4 flex items-center justify-between">
-            <span>7-Pillar Distribution: Human vs Synthetic</span>
-            <span className="text-xs font-mono text-zinc-500">Counts by Category</span>
-          </h3>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={PILLAR_DISTRIBUTION_DATA}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                <XAxis dataKey="pillar" stroke="#71717a" fontSize={10} />
-                <YAxis stroke="#71717a" fontSize={10} />
-                <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }} />
-                <Legend wrapperStyle={{ fontSize: '11px' }} />
-                <Bar dataKey="human" name="Human Craft" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="synthetic" name="Synthetic AI" fill="#06b6d4" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+        </div>
+      ) : (
+        /* Interactive React Flow Graph Explorer */
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-4 h-[600px] flex flex-col">
+          <div className="mb-4">
+            <h2 className="text-sm font-bold text-zinc-200">Interactive Lineage Explorer</h2>
+            <p className="text-xs text-zinc-400">Pan, zoom, and explore artifact relationships across epochs.</p>
+          </div>
+          <div className="flex-1 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950">
+            <ReactFlow defaultNodes={INITIAL_NODES} defaultEdges={INITIAL_EDGES} fitView>
+              <Background color="#27272a" gap={16} />
+              <Controls />
+            </ReactFlow>
           </div>
         </div>
-
-        {/* Provenance Composition Pie */}
-        <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl">
-          <h3 className="text-sm font-semibold text-zinc-200 mb-4 flex items-center justify-between">
-            <span>Creation Agency Composition</span>
-            <span className="text-xs font-mono text-zinc-500">Pillar #7 Breakdown</span>
-          </h3>
-          <div className="h-72 flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={PROVENANCE_PIE_DATA}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={4}
-                  dataKey="value"
-                >
-                  {PROVENANCE_PIE_DATA.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }} />
-                <Legend wrapperStyle={{ fontSize: '11px' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Timeline Area Chart */}
-        <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl lg:col-span-2">
-          <h3 className="text-sm font-semibold text-zinc-200 mb-4 flex items-center justify-between">
-            <span>Temporal Infiltration Trajectory (Stone Age - 2026)</span>
-            <span className="text-xs font-mono text-zinc-500">% Share in Database Registrations</span>
-          </h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={HISTORICAL_TIMELINE_DATA}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                <XAxis dataKey="epoch" stroke="#71717a" fontSize={11} />
-                <YAxis stroke="#71717a" fontSize={11} />
-                <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }} />
-                <Area type="monotone" dataKey="humanRatio" name="Human Craft Ratio (%)" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.2} />
-                <Area type="monotone" dataKey="syntheticInfiltration" name="Synthetic AI Infiltration (%)" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
