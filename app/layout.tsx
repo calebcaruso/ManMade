@@ -1,4 +1,5 @@
 import React from 'react';
+import './globals.css';
 
 export default function RootLayout({
   children,
@@ -7,7 +8,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body style={{ margin: 0, padding: 0, backgroundColor: '#020617' }}>
+      <body className="bg-zinc-950 text-zinc-100 min-h-screen">
         {children}
       </body>
     </html>
