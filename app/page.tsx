@@ -176,7 +176,7 @@ export default function AncestralLedgerApp() {
                       {PROVENANCE_PIE_DATA.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
-                    Pie>
+                    </Pie>
                     <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }} />
                   </PieChart>
                 </ResponsiveContainer>
